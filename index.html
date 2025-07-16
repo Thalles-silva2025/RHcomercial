@@ -533,7 +533,6 @@
                     preliminaryScore: score // A pontuação preliminar ainda é calculada no frontend
                 };
 
-                // Faz a chamada para o Apps Script
                 const sheetResponse = await fetch(GOOGLE_APPS_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors', 
@@ -544,11 +543,6 @@
                 });
 
                 console.log("Tentativa de envio para Google Sheets. Status da resposta:", sheetResponse.status);
-
-                // Como 'no-cors' impede a leitura direta da resposta, não podemos obter o resumo da IA aqui.
-                // O resumo da IA será gerado no Apps Script e salvo na planilha.
-                // A mensagem "Gerando resumo..." ficará no modal até o modal ser fechado.
-                // Isso é um limite do 'no-cors' sem um backend intermediário.
 
             } catch (sheetError) {
                 console.error("Erro ao enviar dados para Google Sheets:", sheetError);
