@@ -101,6 +101,7 @@
                     </div>
                     <div>
                         <label for="email" class="block text-gray-700 text-sm font-semibold mb-2">E-mail:</label>
+                        <!-- ALTERAÇÃO: type="email" para validação de e-mail -->
                         <input type="email" id="email" name="email" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
                     </div>
                     <div>
@@ -295,19 +296,29 @@
     <!-- Modal de Resultado/Feedback -->
     <div id="resultModal" class="modal">
         <div class="modal-content">
+            <!-- Botão X para fechar o modal -->
             <span class="close-button" onclick="closeModal()">&times;</span>
             <h2 class="text-3xl font-bold text-gray-900 mb-4">Questionário Enviado!</h2>
             <p class="text-lg text-gray-700 mb-6">Agradecemos o seu interesse no Hub Business. Suas respostas foram recebidas e serão analisadas com cuidado.</p>
             <div id="loadingSpinner" class="loader hidden"></div> <!-- Spinner de carregamento -->
+            
+            <!-- Seção de Pré-Avaliação Simplificada (visível ao participante) -->
             <div id="evaluationResult" class="text-left bg-gray-50 p-4 rounded-md border border-gray-200 hidden">
                 <h3 class="text-xl font-semibold text-gray-800 mb-2">Pré-Avaliação Simplificada:</h3>
                 <p id="scoreMessage" class="text-gray-700 mb-4"></p>
-                <h3 class="text-xl font-semibold text-gray-800 mb-2">Resumo do Perfil (Análise de IA):</h3>
-                <p id="aiSummary" class="text-gray-700 leading-relaxed"></p>
                 <p class="text-gray-600 mt-4 text-sm">
-                    <strong class="text-red-600">Atenção:</strong> Esta é uma avaliação simplificada e análise de IA para demonstração. O processo real de seleção envolve uma análise mais aprofundada das suas respostas e etapas adicionais.
+                    <strong class="text-red-600">Atenção:</strong> Esta é uma avaliação simplificada para demonstração. O processo real de seleção envolve uma análise mais aprofundada das suas respostas e etapas adicionais.
                 </p>
             </div>
+
+            <!-- Seção de Resumo do Perfil (Análise de IA) - AGORA ESCONDIDA DO PARTICIPANTE -->
+            <!-- Esta seção não será exibida no modal para o participante, mas os dados ainda serão enviados para o Sheets. -->
+            <div id="aiSummaryContainer" class="hidden">
+                 <h3 class="text-xl font-semibold text-gray-800 mb-2">Resumo do Perfil (Análise de IA):</h3>
+                 <p id="aiSummary" class="text-gray-700 leading-relaxed"></p>
+            </div>
+
+            <!-- Botão "Fechar" do modal -->
             <button onclick="closeModal()" class="mt-8 bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-indigo-700 transition duration-300 ease-in-out">
                 Fechar
             </button>
@@ -352,12 +363,14 @@
          * Fecha o modal de feedback e reseta o formulário.
          */
         function closeModal() {
-            document.getElementById('resultModal').style.display = 'none';
+            document.getElementById('resultModal').style.display = 'none'; // Define explicitamente para 'none'
             document.getElementById('salesAssessmentForm').reset(); 
             document.getElementById('evaluationResult').classList.add('hidden'); 
             document.getElementById('loadingSpinner').classList.add('hidden'); 
+            // Garante que campos condicionais voltem ao estado inicial (escondidos e não obrigatórios)
             toggleConditionalText('highValueSalesText', false);
             toggleConditionalText('consultativeSalesText', false);
+            // Gera um novo ID de usuário para a próxima submissão, se o formulário for usado novamente
             userId = crypto.randomUUID();
             document.getElementById('userIdDisplay').textContent = userId;
         }
@@ -370,7 +383,8 @@
             const submitButton = document.getElementById('submitButton');
             const loadingSpinner = document.getElementById('loadingSpinner');
             const evaluationResultDiv = document.getElementById('evaluationResult');
-            const aiSummaryElement = document.getElementById('aiSummary');
+            // const aiSummaryElement = document.getElementById('aiSummary'); // Não mais necessário para exibir ao participante
+            // const aiSummaryContainer = document.getElementById('aiSummaryContainer'); // Não mais necessário para exibir ao participante
             const scoreMessageElement = document.getElementById('scoreMessage');
 
             // Desabilita o botão de envio e mostra o spinner de carregamento
@@ -378,7 +392,8 @@
             submitButton.textContent = 'Enviando...';
             loadingSpinner.classList.remove('hidden');
             evaluationResultDiv.classList.add('hidden'); 
-            aiSummaryElement.textContent = ''; 
+            // aiSummaryContainer.classList.add('hidden'); // Garante que o container da IA esteja escondido
+            // aiSummaryElement.textContent = ''; 
             scoreMessageElement.textContent = ''; 
             openModal(); 
 
@@ -549,9 +564,10 @@
                 console.error("Erro ao chamar a API da IA:", error);
                 aiGeneratedSummary = "Erro ao processar a análise de perfil pela IA. Tente novamente mais tarde.";
             } finally {
-                loadingSpinner.classList.add('hidden'); 
-                evaluationResultDiv.classList.remove('hidden'); 
-                aiSummaryElement.textContent = aiGeneratedSummary; 
+                loadingSpinner.classList.add('hidden'); // Esconde o spinner
+                evaluationResultDiv.classList.remove('hidden'); // Mostra a seção de resultados (apenas a pontuação, não a IA)
+                // aiSummaryElement.textContent = aiGeneratedSummary; // REMOVIDO: Não exibe mais o resumo da IA ao participante
+                // aiSummaryContainer.classList.remove('hidden'); // REMOVIDO: Não exibe mais o container da IA ao participante
 
                 // Enviar dados para o Google Sheets via Google Apps Script
                 try {
@@ -586,7 +602,7 @@
                         mentoringArguments: data.mentoringArguments || '',
                         financialImpact: data.financialImpact || '',
                         preliminaryScore: score,
-                        aiProfileSummary: aiGeneratedSummary
+                        aiProfileSummary: aiGeneratedSummary // Ainda envia o resumo da IA para o Sheets
                     };
 
                     const sheetResponse = await fetch(GOOGLE_APPS_SCRIPT_URL, {
