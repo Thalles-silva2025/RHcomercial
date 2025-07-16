@@ -299,7 +299,7 @@
             <!-- Botão X para fechar o modal -->
             <span class="close-button" onclick="closeModal()">&times;</span>
             <h2 class="text-3xl font-bold text-gray-900 mb-4">Questionário Enviado!</h2>
-            <p class="text-lg text-gray-700 mb-6">Agradecemos o seu interesse no Hub Business. Suas respostas foram recebidas e serão analisadas com cuidado.</p>
+            <p class="text-lg text-gray-700 mb-6">Aguarde enquanto processamos suas respostas...</p>
             <div id="loadingSpinner" class="loader hidden"></div> <!-- Spinner de carregamento -->
             
             <!-- Seção de Pré-Avaliação Simplificada (visível ao participante) -->
@@ -307,15 +307,15 @@
                 <h3 class="text-xl font-semibold text-gray-800 mb-2">Pré-Avaliação Simplificada:</h3>
                 <p id="scoreMessage" class="text-gray-700 mb-4"></p>
                 <p class="text-gray-600 mt-4 text-sm">
-                    <strong class="text-red-600">Atenção:</strong> Esta é uma avaliação simplificada para demonstração. O processo real de seleção envolve uma análise mais aprofundada das suas respostas e etapas adicionais.
+                    <strong class="text-red-600">Atenção:</strong> Esta é uma avaliação simplificada para demonstração.
                 </p>
             </div>
 
-            <!-- Seção de Resumo do Perfil (Análise de IA) - AGORA ESCONDIDA DO PARTICIPANTE -->
-            <!-- Esta seção não será exibida no modal para o participante, mas os dados ainda serão enviados para o Sheets. -->
-            <div id="aiSummaryContainer" class="hidden">
+            <!-- Seção de Resumo do Perfil (Análise de IA) - AGORA VISÍVEL AO PARTICIPANTE -->
+            <!-- Removido a classe 'hidden' padrão para esta seção -->
+            <div id="aiSummaryContainer"> 
                  <h3 class="text-xl font-semibold text-gray-800 mb-2">Resumo do Perfil (Análise de IA):</h3>
-                 <p id="aiSummary" class="text-gray-700 leading-relaxed"></p>
+                 <p id="aiSummary" class="text-gray-700 leading-relaxed">Gerando resumo...</p>
             </div>
 
             <!-- Botão "Fechar" do modal -->
@@ -326,7 +326,7 @@
     </div>
 
     <script type="module">
-        // Variável para armazenar o ID do usuário (gerado localmente, sem Firebase)
+        // Variável para armazenar o ID do usuário (gerado localmente)
         let userId = crypto.randomUUID(); // Gera um ID único para cada sessão do usuário
         document.getElementById('userIdDisplay').textContent = userId; // Exibe o ID na página
 
@@ -363,7 +363,9 @@
          * Fecha o modal de feedback e reseta o formulário.
          */
         function closeModal() {
-            document.getElementById('resultModal').style.display = 'none'; // Define explicitamente para 'none'
+            console.log('closeModal() called'); // Log para depuração
+            const modal = document.getElementById('resultModal');
+            modal.style.display = 'none'; // Garante que o display seja 'none'
             document.getElementById('salesAssessmentForm').reset(); 
             document.getElementById('evaluationResult').classList.add('hidden'); 
             document.getElementById('loadingSpinner').classList.add('hidden'); 
@@ -383,8 +385,8 @@
             const submitButton = document.getElementById('submitButton');
             const loadingSpinner = document.getElementById('loadingSpinner');
             const evaluationResultDiv = document.getElementById('evaluationResult');
-            // const aiSummaryElement = document.getElementById('aiSummary'); // Não mais necessário para exibir ao participante
-            // const aiSummaryContainer = document.getElementById('aiSummaryContainer'); // Não mais necessário para exibir ao participante
+            const aiSummaryElement = document.getElementById('aiSummary'); // Elemento da IA
+            const aiSummaryContainer = document.getElementById('aiSummaryContainer'); // Container da IA
             const scoreMessageElement = document.getElementById('scoreMessage');
 
             // Desabilita o botão de envio e mostra o spinner de carregamento
@@ -392,8 +394,8 @@
             submitButton.textContent = 'Enviando...';
             loadingSpinner.classList.remove('hidden');
             evaluationResultDiv.classList.add('hidden'); 
-            // aiSummaryContainer.classList.add('hidden'); // Garante que o container da IA esteja escondido
-            // aiSummaryElement.textContent = ''; 
+            aiSummaryContainer.classList.add('hidden'); // Esconde o container da IA no início do processo
+            aiSummaryElement.textContent = 'Gerando resumo...'; // Mensagem de carregamento da IA
             scoreMessageElement.textContent = ''; 
             openModal(); 
 
@@ -496,131 +498,64 @@
 
             scoreMessageElement.innerHTML = scoreMessage; 
 
-            // Prepara o prompt para a análise da IA (Gemini API)
-            const aiPrompt = `
-                Analise as seguintes respostas de um candidato à vaga de Vendedor de Alta Performance no Hub Business.
-                O perfil ideal do vendedor para o Hub Business busca:
-                - Experiência comprovada em vendas B2B/B2C de alto valor, consultivas e complexas.
-                - Conhecimento em gestão empresarial (financeira, pessoas, processos, marketing, vendas).
-                - Proatividade, iniciativa (perfil hunter), orientação a resultados e foco em metas.
-                - Inteligência emocional, persuasão, escuta ativa e capacidade analítica.
-                - Adaptabilidade e aprendizado contínuo.
-                - Domínio de técnicas de vendas consultivas (SPIN Selling, Challenger Sale).
-                - Habilidade em gestão de pipeline e CRM.
-                - Forte habilidade em negociação e fechamento de vendas de alto valor.
-                - Alinhamento com a visão de longo prazo, mentalidade de crescimento e colaboração.
-                - Motivação por ganhos significativos (meta de R$ 20.000/mês em comissão) e desenvolvimento profissional contínuo.
-
-                Com base nas respostas abaixo, forneça um resumo conciso do perfil deste candidato, destacando seus pontos fortes e áreas que podem ser desenvolvidas em relação ao perfil ideal do Hub Business.
-
-                --- Respostas do Candidato ---
-                Experiência em Vendas: "${data.salesExperience || 'Não informado'}"
-                Experiência em Vendas de Alto Valor: "${data.highValueSales === 'sim' ? (data.highValueSalesText || 'Sim, mas não detalhado') : 'Não'}"
-                Conhecimento em Gestão: "${data.managementKnowledge || 'Não informado'}"
-                Atualização de Mercado: "${data.stayUpdated || 'Não informado'}"
-                Proatividade: "${data.proactivity || 'Não informado'}"
-                Meta Desafiadora: "${data.challengingGoal || 'Não informado'}"
-                Lidar com Objeções: "${data.objectionHandling || 'Não informado'}"
-                Escuta Ativa: "${data.activeListening || 'Não informado'}"
-                Adaptabilidade: "${data.adaptability || 'Não informado'}"
-                Vendas Consultivas: "${data.consultativeSales === 'sim' ? (data.consultativeSalesText || 'Sim, mas não detalhado') : data.consultativeSales || 'Não informado'}"
-                Experiência com CRM: "${data.crmExperience || 'Não informado'}"
-                Negociação: "${data.negotiation || 'Não informado'}"
-                Conforto em Apresentação: "${data.presentationComfort || 'Não informado'}"
-                Modelo de Remuneração: "${data.remunerationModel || 'Não informado'}"
-                Sucesso a Longo Prazo: "${data.longTermSuccess || 'Não informado'}"
-                Ambiente de Aprendizado: "${data.learningEnvironment || 'Não informado'}"
-                Contribuição para Equipe: "${data.teamContribution || 'Não informado'}"
-                Motivação: "${data.motivation || 'Não informado'}"
-                Produto Conforto: "${data.productComfort || 'Não informado'}"
-                Perguntas de Cenário: "${data.scenarioQuestions || 'Não informado'}"
-                Argumentos de Mentoria: "${data.mentoringArguments || 'Não informado'}"
-                Impacto Financeiro: "${data.financialImpact || 'Não informado'}"
-            `;
-
-            let aiGeneratedSummary = "Não foi possível gerar o resumo do perfil pela IA.";
+            // Enviar dados para o Google Sheets via Google Apps Script (que agora também chamará a IA)
             try {
-                const payload = {
-                    contents: [{ role: "user", parts: [{ text: aiPrompt }] }],
+                const sheetData = {
+                    userId: userId,
+                    fullName: data.fullName || '',
+                    email: data.email || '',
+                    phone: data.phone || '',
+                    linkedin: data.linkedin || '',
+                    salesExperience: data.salesExperience || '',
+                    highValueSales: data.highValueSales || '',
+                    highValueSalesText: data.highValueSalesText || '',
+                    managementKnowledge: data.managementKnowledge || '',
+                    stayUpdated: data.stayUpdated || '',
+                    proactivity: data.proactivity || '',
+                    challengingGoal: data.challengingGoal || '',
+                    objectionHandling: data.objectionHandling || '',
+                    activeListening: data.activeListening || '',
+                    adaptability: data.adaptability || '',
+                    consultativeSales: data.consultativeSales || '',
+                    consultativeSalesText: data.consultativeSalesText || '',
+                    crmExperience: data.crmExperience || '',
+                    negotiation: data.negotiation || '',
+                    presentationComfort: data.presentationComfort || '',
+                    remunerationModel: data.remunerationModel || '',
+                    longTermSuccess: data.longTermSuccess || '',
+                    learningEnvironment: data.learningEnvironment || '',
+                    teamContribution: data.teamContribution || '',
+                    motivation: data.motivation || '',
+                    productComfort: data.productComfort || '',
+                    scenarioQuestions: data.scenarioQuestions || '',
+                    mentoringArguments: data.mentoringArguments || '',
+                    financialImpact: data.financialImpact || '',
+                    preliminaryScore: score // A pontuação preliminar ainda é calculada no frontend
                 };
-                const apiKey = ""; // A chave da API será fornecida pelo ambiente Canvas em tempo de execução
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
-                const response = await fetch(apiUrl, {
+                const sheetResponse = await fetch(GOOGLE_APPS_SCRIPT_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    mode: 'no-cors', 
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(sheetData)
                 });
 
-                const result = await response.json();
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    aiGeneratedSummary = result.candidates[0].content.parts[0].text;
-                } else {
-                    console.error("Estrutura de resposta da IA inesperada:", result);
-                }
-            } catch (error) {
-                console.error("Erro ao chamar a API da IA:", error);
-                aiGeneratedSummary = "Erro ao processar a análise de perfil pela IA. Tente novamente mais tarde.";
+                console.log("Tentativa de envio para Google Sheets. Status da resposta:", sheetResponse.status);
+
+                // Em uma aplicação real, você esperaria uma resposta do Apps Script aqui com o resumo da IA.
+                // Como estamos usando no-cors, não podemos ler a resposta diretamente.
+                // A mensagem "Gerando resumo..." ficará até o modal ser fechado.
+                // O resumo da IA será salvo APENAS no Google Sheets.
+
+            } catch (sheetError) {
+                console.error("Erro ao enviar dados para Google Sheets:", sheetError);
+                aiSummaryElement.textContent = 'Erro ao carregar resumo da IA.'; // Define mensagem de erro para o participante
             } finally {
-                loadingSpinner.classList.add('hidden'); // Esconde o spinner
-                evaluationResultDiv.classList.remove('hidden'); // Mostra a seção de resultados (apenas a pontuação, não a IA)
-                // aiSummaryElement.textContent = aiGeneratedSummary; // REMOVIDO: Não exibe mais o resumo da IA ao participante
-                // aiSummaryContainer.classList.remove('hidden'); // REMOVIDO: Não exibe mais o container da IA ao participante
-
-                // Enviar dados para o Google Sheets via Google Apps Script
-                try {
-                    const sheetData = {
-                        userId: userId,
-                        fullName: data.fullName || '',
-                        email: data.email || '',
-                        phone: data.phone || '',
-                        linkedin: data.linkedin || '',
-                        salesExperience: data.salesExperience || '',
-                        highValueSales: data.highValueSales || '',
-                        highValueSalesText: data.highValueSalesText || '',
-                        managementKnowledge: data.managementKnowledge || '',
-                        stayUpdated: data.stayUpdated || '',
-                        proactivity: data.proactivity || '',
-                        challengingGoal: data.challengingGoal || '',
-                        objectionHandling: data.objectionHandling || '',
-                        activeListening: data.activeListening || '',
-                        adaptability: data.adaptability || '',
-                        consultativeSales: data.consultativeSales || '',
-                        consultativeSalesText: data.consultativeSalesText || '',
-                        crmExperience: data.crmExperience || '',
-                        negotiation: data.negotiation || '',
-                        presentationComfort: data.presentationComfort || '',
-                        remunerationModel: data.remunerationModel || '',
-                        longTermSuccess: data.longTermSuccess || '',
-                        learningEnvironment: data.learningEnvironment || '',
-                        teamContribution: data.teamContribution || '',
-                        motivation: data.motivation || '',
-                        productComfort: data.productComfort || '',
-                        scenarioQuestions: data.scenarioQuestions || '',
-                        mentoringArguments: data.mentoringArguments || '',
-                        financialImpact: data.financialImpact || '',
-                        preliminaryScore: score,
-                        aiProfileSummary: aiGeneratedSummary // Ainda envia o resumo da IA para o Sheets
-                    };
-
-                    const sheetResponse = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors', 
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(sheetData)
-                    });
-
-                    console.log("Tentativa de envio para Google Sheets. Status da resposta:", sheetResponse.status);
-
-                } catch (sheetError) {
-                    console.error("Erro ao enviar dados para Google Sheets:", sheetError);
-                }
-
-                // Reabilita o botão de envio
+                loadingSpinner.classList.add('hidden'); 
+                evaluationResultDiv.classList.remove('hidden'); 
+                aiSummaryContainer.classList.remove('hidden'); // MOSTRA o container da IA no final do processo
                 submitButton.disabled = false;
                 submitButton.textContent = 'Enviar Questionário';
             }
